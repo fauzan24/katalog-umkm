@@ -147,3 +147,67 @@ export async function tambahProduk(prevState, formData) {
   revalidatePath("/");
   redirect("/admin");
 }
+
+/**
+ * Server Action untuk mengubah produk yang sudah ada di database.
+ * Memeriksa autentikasi admin di server sebelum menyimpan perubahan.
+ */
+export async function ubahProduk(prevState, formData) {
+  let form = formData;
+  if (!form && prevState instanceof FormData) {
+    form = prevState;
+  }
+
+  const supabase = await createAdminClient();
+
+  // Wajib periksa bahwa admin sudah login di server
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    redirect("/admin/login");
+  }
+
+  const id = form.get("id")?.toString();
+  const nama = form.get("nama")?.toString().trim();
+  const hargaRaw = form.get("harga")?.toString().trim();
+  const kategori = form.get("kategori")?.toString().trim() || null;
+  const foto_url = form.get("foto_url")?.toString().trim() || null;
+  const deskripsi = form.get("deskripsi")?.toString().trim() || null;
+
+  if (!id) {
+    return { error: "ID produk tidak valid." };
+  }
+
+  if (!nama) {
+    return { error: "Nama produk wajib diisi." };
+  }
+
+  const harga = parseInt(hargaRaw, 10);
+  if (isNaN(harga) || harga < 0) {
+    return { error: "Harga produk harus berupa angka yang tidak negatif." };
+  }
+
+  const { error: updateError } = await supabase
+    .from("produk")
+    .update({
+      nama,
+      harga,
+      kategori,
+      foto_url,
+      deskripsi,
+    })
+    .eq("id", id);
+
+  if (updateError) {
+    return { error: `Gagal mengubah produk: ${updateError.message}` };
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/");
+  revalidatePath(`/produk/${id}`);
+  revalidatePath(`/admin/produk/${id}/ubah`);
+  redirect("/admin");
+}

@@ -6,6 +6,7 @@ import Tombol from "@/components/Tombol";
 export default function FormProduk({ produk = {}, labelTombol, action, error }) {
   return (
     <form action={action} className="flex max-w-xl flex-col gap-4">
+      {produk.id && <input type="hidden" name="id" value={produk.id} />}
       {error && (
         <p className="rounded-lg border border-garis bg-permukaan px-3 py-2 text-sm text-bahaya">
           {error}
