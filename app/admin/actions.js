@@ -211,3 +211,46 @@ export async function ubahProduk(prevState, formData) {
   revalidatePath(`/admin/produk/${id}/ubah`);
   redirect("/admin");
 }
+
+/**
+ * Server Action untuk menghapus produk dari database.
+ * Memeriksa autentikasi admin di server sebelum menghapus data.
+ */
+export async function hapusProduk(idOrFormData, maybeFormData) {
+  let id;
+  if (idOrFormData instanceof FormData) {
+    id = idOrFormData.get("id");
+  } else if (maybeFormData instanceof FormData) {
+    id = idOrFormData || maybeFormData.get("id");
+  } else {
+    id = idOrFormData;
+  }
+
+  const supabase = await createAdminClient();
+
+  // Wajib periksa bahwa admin sudah login di server
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    redirect("/admin/login");
+  }
+
+  if (!id) {
+    return { error: "ID produk tidak valid." };
+  }
+
+  const { error: deleteError } = await supabase
+    .from("produk")
+    .delete()
+    .eq("id", id);
+
+  if (deleteError) {
+    return { error: `Gagal menghapus produk: ${deleteError.message}` };
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/");
+}
